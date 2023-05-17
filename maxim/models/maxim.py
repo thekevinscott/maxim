@@ -72,8 +72,6 @@ def unblock_images_einops(x, grid_size, patch_size):
   return x
 
 
-FOO = False
-
 class UpSampleRatio(nn.Module):
   """Upsample features given a ratio > 0."""
   features: int
@@ -83,31 +81,19 @@ class UpSampleRatio(nn.Module):
   @nn.compact
   def __call__(self, x):
     n, h, w, c = x.shape
-    if FOO:
-        # print('n', n)
-        # print('self ratio', self.ratio)
-        # print('c', c)
-        ratio = self.ratio
-        if ratio < 1:
-            # print('incoming h', h)
-            ratio = int(1 / ratio)
-            h = h // ratio
-            # print('h (floor div)', h)
-        else:
-            h = h * self.ratio
-            # print('h (multiplied)', h)
-        w = int(w * self.ratio)
-        # print('shape', (n, h, w, c))
-        x = jax.image.resize(
-            x,
-            shape=(n, h, w, c),
-            method="bilinear",
-            )
+    ratio = self.ratio
+    if ratio < 1:
+        ratio = int(1 / ratio)
+        h = h // ratio
+        w = w // ratio
     else:
-         x = jax.image.resize(
-         x,
-        shape=(n, int(h * self.ratio), int(w * self.ratio), c),
-        method="bilinear")
+        h = h * self.ratio
+        w = w * self.ratio
+    x = jax.image.resize(
+        x,
+        shape=(n, h, w, c),
+        method="bilinear",
+    )
     x = Conv1x1(features=self.features, use_bias=self.use_bias)(x)
     return x
 
@@ -813,7 +799,6 @@ class MAXIM(nn.Module):
             UpSampleRatio(
                 (2**i) * self.features,
                 ratio=2**(j - i),
-                # ratio=1,
                 use_bias=self.use_bias)(enc) for j, enc in enumerate(encs)
         ],
                                  axis=-1)
@@ -850,7 +835,6 @@ class MAXIM(nn.Module):
             UpSampleRatio(
                 (2**i) * self.features,
                 ratio=2**(self.depth - j - 1 - i),
-                # ratio=1,
                 use_bias=self.use_bias)(skip)
             for j, skip in enumerate(skip_features)
         ],
